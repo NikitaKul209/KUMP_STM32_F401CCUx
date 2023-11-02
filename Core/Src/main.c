@@ -61,6 +61,14 @@ bool tx_done_flag = false;
 bool tx_ready_flag = false;
 uint32_t uart_error;
 
+
+
+int ii_max = 256;
+int  fl_err_fragment_char_min = 0;
+
+
+
+
 int receive_byte = 0;
 uint32_t error_code = 0;
 bool FE_Error = false;
@@ -82,6 +90,7 @@ union unn_t
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
+signed char Check_Uart_inbuff(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -127,14 +136,13 @@ int main(void)
   TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
   TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
 
-  HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
+//  HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
 
 enum states{
 	start_uart_receive_data,
 	start_uart_transmit_data,
-	check_received_data
-
-
+	check_received_data,
+	modbus_functions
 };
 int state = start_uart_receive_data;
   /* USER CODE END 2 */
@@ -144,52 +152,90 @@ int state = start_uart_receive_data;
   while (1)
   {
 
-switch(state){
+	switch(state){
 
-case 1:
-	break;
-case 2:
-	break;
-case 3:
-	break;
-
-}
-
-
-	  if(rx_done_flag ==true){
-
-		  p_uart_inbuf = uart_inbuf;
-
-
-		  if(FE_Error|OE_Error|PE_Error){
-			  	  FE_Error = false;
-			  	  PE_Error = false;
-			  	  OE_Error = false;
-			 	 HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
-		  }
-		  else{
-
-
-
-			  if(crc16in(receive_byte, &unn, uart_inbuf)!=0);
+		case start_uart_receive_data:
 
 			  HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
+			  state = check_received_data;
 
-		  }
+			break;
+
+		case check_received_data:
+
+			if (rx_done_flag){
+				rx_done_flag = false;
+
+				if (Check_Uart_inbuff()== 0){
+
+					state = modbus_functions;
+					receive_byte = 0;
+				}
+				else{
+					p_uart_inbuf = 0;
+					receive_byte = 0;
+					HAL_UART_Transmit_IT(&huart1, (uint8_t*) "ERROR", 0x6);
+					state = start_uart_receive_data;
+				}
+
+			}
+
+			break;
+
+		case modbus_functions:
+
+			 p_uart_inbuf = 0;
+			 state = start_uart_transmit_data;
+			break;
+
+		case start_uart_transmit_data:
+
+			 if(tx_ready_flag == true){
+				 tx_ready_flag = false;
+				 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OK", 0x3);
+				 state = start_uart_receive_data;
+
+			 }
+			 break;
 
 
-		  rx_done_flag = false;
-
-	  }
-
-
-
-
-	 if(tx_ready_flag == true){
-		 tx_ready_flag = false;
-		 HAL_UART_Transmit_IT(&huart1, uart_inbuf, receive_byte);
-		 receive_byte = 0;
-	  }
+	}
+//
+//
+//	  if(rx_done_flag ==true){
+//
+//		  p_uart_inbuf = uart_inbuf;
+//
+//
+//		  if(FE_Error|OE_Error|PE_Error){
+//			  	  FE_Error = false;
+//			  	  PE_Error = false;
+//			  	  OE_Error = false;
+//			 	 HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
+//		  }
+//		  else{
+//
+//
+//
+//			  if(crc16in(receive_byte, &unn, uart_inbuf)!=0);
+//
+//			  HAL_UART_Receive_IT (&huart1, p_uart_inbuf++, 1);
+//
+//		  }
+//
+//
+//		  rx_done_flag = false;
+//
+//	  }
+//
+//
+//
+//
+//	 if(tx_ready_flag == true){
+//		 tx_ready_flag = false;
+//		 HAL_UART_Transmit_IT(&huart1, uart_inbuf, receive_byte);
+//		 receive_byte = 0;
+//	  }
 
 
 
@@ -264,8 +310,36 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+signed char Check_Uart_inbuff(void){
 
 
+
+	if (receive_byte >= ii_max){
+
+		return -4;
+	}
+
+	if (receive_byte < 5){
+
+		return -3;
+	}
+
+	if(FE_Error|OE_Error|PE_Error){
+
+		FE_Error = 0;
+		OE_Error = 0;
+		PE_Error = 0;
+
+		return -2;
+	}
+
+	if(crc16in(receive_byte, &unn, uart_inbuf)!=0){
+
+		return -1;
+	}
+
+	return 0;
+}
 
 
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf)
@@ -305,31 +379,6 @@ char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf)
   else
     return (char) -1;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -375,17 +424,17 @@ void HAL_UART_ErrorCallback (UART_HandleTypeDef * huart){
 		 		 if(error_code & UART_FLAG_FE){
 
 		 			 	 FE_Error = true;
-//		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "FE", 0x3);
+		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "FE", 0x3);
 		 		 }
 		 		 if(error_code & UART_FLAG_PE){
 
 		 			 	 PE_Error = true;
-//		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "PE", 0x3);
+		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "PE", 0x3);
 		 		 }
 		 		 if(error_code & UART_FLAG_ORE ){
 
 		 			    OE_Error = true;
-//		 			    HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OE", 0x3);
+		 			    HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OE", 0x3);
 
 		 		 }
 		 		 error_code = 0;
