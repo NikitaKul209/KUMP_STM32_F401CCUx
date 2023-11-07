@@ -55,6 +55,10 @@
 const unsigned char I2C_DEV_ADDR = 0x44;
 const unsigned char DEV_ADDR = 0x40;
 
+
+const unsigned int ADU_MIN = 5;
+const unsigned int ADU_MAX = 2856;
+
 bool rx_done_flag = false;
 bool tx_done_flag = false;
 bool tx_ready_flag = false;
@@ -75,6 +79,28 @@ uint8_t uart_inbuf[256] = { 0 };
 uint8_t uart_outbuf[256] = { 0 };
 uint8_t *p_uart_inbuf = uart_inbuf;
 
+struct Uart {
+
+	bool rx_done_flag;
+	bool tx_done_flag;
+	bool tx_ready_flag;
+	uint8_t uart_inbuf[256];
+	uint8_t uart_outbuf[256];
+	uint8_t *p_uart_inbuf;
+	uint32_t error_code;
+	int receive_byte;
+	int byte_to_send;
+
+};
+
+struct Uart uart = {
+
+.rx_done_flag = false, .tx_done_flag = false, .tx_ready_flag = false,
+		.uart_inbuf = { 0 }, .uart_outbuf = { 0 }, .p_uart_inbuf =
+				uart.uart_inbuf, .receive_byte = 0, .byte_to_send = 0
+
+};
+
 union unn_t {
 	char ch_val[2];
 	unsigned short w_val;
@@ -93,7 +119,9 @@ enum states {
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
+float Get_Temp_Humidity_Value();
 signed char Check_Uart_inbuff(void);
+float Get_Pressure_Value();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -190,13 +218,6 @@ int main(void) {
 
 		}
 
-
-//	  HAL_ADC_Start(&hadc1);
-//	  	  if (HAL_ADC_PollForConversion(&hadc1, 100)==HAL_OK){
-//	  		  adc = HAL_ADC_GetValue(&hadc1)*3.3/4096;
-// 	  		  HAL_ADC_Stop(&hadc1);
-//	  	  };
-
 //	  HAL_Delay(100);
 //	  HAL_SPI_Transmit(&hspi1, spi_buff, 0x1, 1000);
 //	  HAL_Delay(1000);
@@ -253,14 +274,33 @@ void SystemClock_Config(void) {
 
 /* USER CODE BEGIN 4 */
 
+float Get_Pressure_Value() {
+
+
+	HAL_ADC_Start(&hadc1);
+	if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
+		adc = HAL_ADC_GetValue(&hadc1) * 3.3 / 4096;
+		HAL_ADC_Stop(&hadc1);
+	};
+	return adc;
+}
+
+
+float Get_Temp_Humidity_Value(){
+
+//	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, , MemAddSize, pData, Size);
+
+
+};
+
 signed char Check_Uart_inbuff(void) {
 
-	if (receive_byte >= ii_max) {
+	if (receive_byte >= ADU_MAX) {
 
 		return -4;
 	}
 
-	if (receive_byte < 5) {
+	if (receive_byte < ADU_MIN) {
 
 		return -3;
 	}
