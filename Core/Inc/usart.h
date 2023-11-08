@@ -35,7 +35,20 @@ extern "C" {
 extern UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN Private defines */
+struct Uart {
 
+	bool rx_done_flag;
+	bool tx_done_flag;
+	bool tx_ready_flag;
+	uint8_t uart_inbuf[256];
+	uint8_t uart_outbuf[256];
+	uint8_t *p_uart_inbuf;
+	uint32_t error_code;
+	uint8_t receive_byte;
+	uint8_t byte_to_send;
+	uint8_t state;
+
+};
 /* USER CODE END Private defines */
 
 void MX_USART1_UART_Init(void);

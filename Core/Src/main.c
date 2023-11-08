@@ -52,54 +52,24 @@
 
 /* USER CODE BEGIN PV */
 
-const unsigned char I2C_DEV_ADDR = 0x44;
+const uint16_t I2C_DEV_ADDR = 0x44;
+
+const uint16_t I2C_START_READ_COMMAND = 0x2C06;
+const uint16_t I2C_START_PERIODIC_READ_COMMAND = 0x2737;
+const uint16_t I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
+const uint16_t I2C_RESET_COMMAND = 0x0006;
+
+
 const unsigned char DEV_ADDR = 0x40;
 
-
 const unsigned int ADU_MIN = 5;
-const unsigned int ADU_MAX = 2856;
-
-bool rx_done_flag = false;
-bool tx_done_flag = false;
-bool tx_ready_flag = false;
+const unsigned int ADU_MAX = 256;
 
 bool FE_Error = false;
 bool OE_Error = false;
 bool PE_Error = false;
 
 float adc;
-
-int ii_max = 256;
-int fl_err_fragment_char_min = 0;
-int receive_byte = 0;
-
-uint32_t error_code = 0;
-
-uint8_t uart_inbuf[256] = { 0 };
-uint8_t uart_outbuf[256] = { 0 };
-uint8_t *p_uart_inbuf = uart_inbuf;
-
-struct Uart {
-
-	bool rx_done_flag;
-	bool tx_done_flag;
-	bool tx_ready_flag;
-	uint8_t uart_inbuf[256];
-	uint8_t uart_outbuf[256];
-	uint8_t *p_uart_inbuf;
-	uint32_t error_code;
-	int receive_byte;
-	int byte_to_send;
-
-};
-
-struct Uart uart = {
-
-.rx_done_flag = false, .tx_done_flag = false, .tx_ready_flag = false,
-		.uart_inbuf = { 0 }, .uart_outbuf = { 0 }, .p_uart_inbuf =
-				uart.uart_inbuf, .receive_byte = 0, .byte_to_send = 0
-
-};
 
 union unn_t {
 	char ch_val[2];
@@ -113,14 +83,34 @@ enum states {
 	modbus_functions
 };
 
+uint8_t i2c_inbuf[256];
+
+struct Uart uart = {
+
+.rx_done_flag = false,
+.tx_done_flag = false,
+.tx_ready_flag = false,
+.uart_inbuf = { 0 },
+.uart_outbuf = { 0 },
+.p_uart_inbuf =uart.uart_inbuf,
+.receive_byte = 0,
+.byte_to_send = 0,
+.state = start_uart_receive_data
+};
+
+
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
+
 /* USER CODE BEGIN PFP */
+void SystemClock_Config(void);
+signed char Check_Uart_inbuff(struct Uart *RxTx);
+void data_exchange(struct Uart *RxTx);
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
-float Get_Temp_Humidity_Value();
-signed char Check_Uart_inbuff(void);
+void Get_Temp_Humidity_Value();
 float Get_Pressure_Value();
 /* USER CODE END PFP */
 
@@ -166,65 +156,13 @@ int main(void) {
 	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
 
-	int state = start_uart_receive_data;
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		switch (state) {
-
-		case start_uart_receive_data:
-
-			HAL_UART_Receive_IT(&huart1, p_uart_inbuf++, 1);
-			state = check_received_data;
-
-			break;
-
-		case check_received_data:
-
-			if (rx_done_flag) {
-				rx_done_flag = false;
-				p_uart_inbuf = uart_inbuf;
-
-				if ((Check_Uart_inbuff() == 0) && (uart_inbuf[0] == DEV_ADDR)) {
-					state = modbus_functions;
-				} else {
-
-					HAL_TIM_Base_Stop_IT(&htim3);
-					state = start_uart_receive_data;
-				}
-				receive_byte = 0;
-
-			}
-
-			break;
-
-		case modbus_functions:
-
-			state = start_uart_transmit_data;
-			break;
-
-		case start_uart_transmit_data:
-
-			if (tx_ready_flag == true) {
-				tx_ready_flag = false;
-				HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OK", 0x3);
-				state = start_uart_receive_data;
-
-			}
-			break;
-
-		}
-
-//	  HAL_Delay(100);
-//	  HAL_SPI_Transmit(&hspi1, spi_buff, 0x1, 1000);
-//	  HAL_Delay(1000);
-
-//	  HAL_I2C_Master_Transmit(&hi2c1, (SPI_DEV_ADDR<<1), SPI_REG_ADDR, 2,1000);
-//	  HAL_I2C_Master_Receive(&hi2c1, SPI_DEV_ADDR<<1, spi_read_buff, 0x4,100);
-//	  HAL_Delay(100);
+		data_exchange(&uart);
 
 	}
 
@@ -274,8 +212,58 @@ void SystemClock_Config(void) {
 
 /* USER CODE BEGIN 4 */
 
-float Get_Pressure_Value() {
+void data_exchange(struct Uart *RxTx) {
 
+	switch (RxTx->state) {
+
+	case start_uart_receive_data:
+
+		HAL_UART_Receive_IT(&huart1, RxTx->p_uart_inbuf++, 1);
+		RxTx->state = check_received_data;
+
+		break;
+
+	case check_received_data:
+
+		if (RxTx->rx_done_flag) {
+			RxTx->rx_done_flag = false;
+			RxTx->p_uart_inbuf = RxTx->uart_inbuf;
+
+			if ((Check_Uart_inbuff(RxTx) == 0) && (RxTx->uart_inbuf[0] == DEV_ADDR)) {
+				RxTx->state = modbus_functions;
+			}
+			else {
+
+				HAL_TIM_Base_Stop_IT(&htim3);
+				RxTx->state = start_uart_receive_data;
+			}
+			RxTx->receive_byte = 0;
+
+		}
+
+		break;
+
+	case modbus_functions:
+
+		RxTx->state = start_uart_transmit_data;
+		break;
+
+	case start_uart_transmit_data:
+
+		if (RxTx->tx_ready_flag == true) {
+			RxTx->tx_ready_flag = false;
+			HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OK", 0x3);
+			RxTx->state = start_uart_receive_data;
+
+		}
+		break;
+
+	}
+
+}
+
+
+float Get_Pressure_Value() {
 
 	HAL_ADC_Start(&hadc1);
 	if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
@@ -286,21 +274,24 @@ float Get_Pressure_Value() {
 }
 
 
-float Get_Temp_Humidity_Value(){
-
-//	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, , MemAddSize, pData, Size);
+void Get_Temp_Humidity_Value(){
 
 
-};
 
-signed char Check_Uart_inbuff(void) {
+	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR,I2C_START_PERIODIC_READ_COMMAND ,0x2 ,i2c_inbuf , 0x40);
 
-	if (receive_byte >= ADU_MAX) {
+
+
+}
+
+signed char Check_Uart_inbuff(struct Uart *RxTx) {
+
+	if (RxTx->receive_byte >= ADU_MAX) {
 
 		return -4;
 	}
 
-	if (receive_byte < ADU_MIN) {
+	if (RxTx->receive_byte < ADU_MIN) {
 
 		return -3;
 	}
@@ -314,7 +305,7 @@ signed char Check_Uart_inbuff(void) {
 		return -2;
 	}
 
-	if (crc16in(receive_byte, &unn, uart_inbuf) != 0) {
+	if (crc16in(RxTx->receive_byte, &unn, RxTx->uart_inbuf) != 0) {
 
 		return -1;
 	}
@@ -358,7 +349,7 @@ char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf) {
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart == &huart1) {
-		tx_done_flag = true;
+		uart.tx_done_flag = true;
 
 	}
 }
@@ -377,9 +368,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		HAL_TIM_Base_Start_IT(&htim3);
 		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
 
-		error_code = HAL_UART_GetError(&huart1);
-		HAL_UART_Receive_IT(&huart1, p_uart_inbuf++, 1);
-		receive_byte++;
+		uart.error_code = HAL_UART_GetError(&huart1);
+		HAL_UART_Receive_IT(&huart1, uart.p_uart_inbuf++, 1);
+		uart.receive_byte++;
 
 	}
 
@@ -389,23 +380,23 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
 	if (huart == &huart1) {
 
-		if (error_code & UART_FLAG_FE) {
+		if (uart.error_code & UART_FLAG_FE) {
 
 			FE_Error = true;
 //		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "FE", 0x3);
 		}
-		if (error_code & UART_FLAG_PE) {
+		if (uart.error_code & UART_FLAG_PE) {
 
 			PE_Error = true;
 //		 			 	 HAL_UART_Transmit_IT(&huart1, (uint8_t*) "PE", 0x3);
 		}
-		if (error_code & UART_FLAG_ORE) {
+		if (uart.error_code & UART_FLAG_ORE) {
 
 			OE_Error = true;
 //		 			    HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OE", 0x3);
 
 		}
-		error_code = 0;
+		uart.error_code = 0;
 
 	}
 }

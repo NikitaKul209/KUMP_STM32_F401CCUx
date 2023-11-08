@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -61,6 +62,7 @@ extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
+
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -214,7 +216,7 @@ void TIM2_IRQHandler(void) {
 		TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 		__HAL_TIM_SetCounter(&htim2,0x0);
 		HAL_UART_AbortReceive_IT(&huart1);
-		rx_done_flag = 1;
+		uart.rx_done_flag = true;
 
 	}
 
@@ -235,7 +237,7 @@ void TIM3_IRQHandler(void) {
 		HAL_TIM_Base_Stop_IT(&htim3);
 		TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
 		__HAL_TIM_SetCounter(&htim3,0x0);
-		tx_ready_flag = true;
+		uart.tx_ready_flag = true;
 
 	}
 	/* USER CODE END TIM3_IRQn 0 */
