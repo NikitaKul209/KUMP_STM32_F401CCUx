@@ -52,6 +52,22 @@
 
 /* USER CODE BEGIN PV */
 
+
+#define REG_INPUT_START 1
+#define REG_INPUT_NREGS 4
+
+const unsigned char FC_RD_INPUT_RG = 0x04;
+
+static unsigned short   usRegInputStart = REG_INPUT_START;
+static unsigned short   usRegInputBuf[REG_INPUT_NREGS];
+
+int exception = 0;
+
+const unsigned char EXCEPTION_CODE1 = 1;
+const unsigned char EXCEPTION_CODE2 = 2;
+const unsigned char EXCEPTION_CODE3 = 3;
+const unsigned char EXCEPTION_CODE4 = 4;
+
 const uint16_t I2C_DEV_ADDR = 0x44;
 
 const uint16_t I2C_START_READ_COMMAND = 0x2C06;
@@ -110,6 +126,7 @@ void SystemClock_Config(void);
 signed char Check_Uart_inbuff(struct Uart *RxTx);
 void data_exchange(struct Uart *RxTx);
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
+int ReadInputReg( unsigned char * RegBuffer, unsigned short usAddress, unsigned short usNRegs );
 void Get_Temp_Humidity_Value();
 float Get_Pressure_Value();
 /* USER CODE END PFP */
@@ -261,6 +278,42 @@ void data_exchange(struct Uart *RxTx) {
 	}
 
 }
+
+
+
+
+
+
+
+
+int ReadInputReg( unsigned char * RegBuffer, unsigned short usAddress, unsigned short usNRegs )
+{
+
+    int iRegIndex = 0;
+
+    if( ( usAddress >= REG_INPUT_START )
+        && ( usAddress + usNRegs <= REG_INPUT_START + REG_INPUT_NREGS ) )
+    {
+        iRegIndex = ( int )( usAddress - usRegInputStart );
+        while( usNRegs > 0 )
+        {
+            *RegBuffer++ =
+                ( unsigned char )( usRegInputBuf[iRegIndex] >> 8 );
+            *RegBuffer++ =
+                ( unsigned char )( usRegInputBuf[iRegIndex] & 0xFF );
+            iRegIndex++;
+            usNRegs--;
+        }
+    }
+    else
+    {
+        exception = EXCEPTION_CODE2;
+    }
+
+    return exception;
+}
+
+
 
 
 float Get_Pressure_Value() {
