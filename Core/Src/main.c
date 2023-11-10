@@ -52,14 +52,13 @@
 
 /* USER CODE BEGIN PV */
 
-
-#define REG_INPUT_START 1
+#define REG_INPUT_START 0
 #define REG_INPUT_NREGS 4
 
 const unsigned char FC_RD_INPUT_RG = 0x04;
 
-static unsigned short   usRegInputStart = REG_INPUT_START;
-static unsigned short   usRegInputBuf[REG_INPUT_NREGS];
+static unsigned short usRegInputStart = REG_INPUT_START;
+static unsigned short usRegInputBuf[REG_INPUT_NREGS] = {0x1,0x2,0x3,0x4};
 
 int exception = 0;
 
@@ -74,7 +73,6 @@ const uint16_t I2C_START_READ_COMMAND = 0x2C06;
 const uint16_t I2C_START_PERIODIC_READ_COMMAND = 0x2737;
 const uint16_t I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
 const uint16_t I2C_RESET_COMMAND = 0x0006;
-
 
 const unsigned char DEV_ADDR = 0x40;
 
@@ -103,19 +101,10 @@ uint8_t i2c_inbuf[256];
 
 struct Uart uart = {
 
-.rx_done_flag = false,
-.tx_done_flag = false,
-.tx_ready_flag = false,
-.uart_inbuf = { 0 },
-.uart_outbuf = { 0 },
-.p_uart_inbuf =uart.uart_inbuf,
-.receive_byte = 0,
-.byte_to_send = 0,
-.state = start_uart_receive_data
-};
-
-
-
+.rx_done_flag = false, .tx_done_flag = false, .tx_ready_flag = false,
+		.uart_inbuf = { 0 }, .uart_outbuf = { 0 }, .p_uart_inbuf =
+				uart.uart_inbuf,.p_uart_outbuf = uart.uart_outbuf , .receive_byte = 0, .byte_to_send = 0, .state =
+				start_uart_receive_data };
 
 /* USER CODE END PV */
 
@@ -125,8 +114,10 @@ struct Uart uart = {
 void SystemClock_Config(void);
 signed char Check_Uart_inbuff(struct Uart *RxTx);
 void data_exchange(struct Uart *RxTx);
+void modbus_function(struct Uart* RxTx);
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
-int ReadInputReg( unsigned char * RegBuffer, unsigned short usAddress, unsigned short usNRegs );
+void crc16_out(unsigned char size, unsigned char *outbuf);
+int ReadInputReg(struct Uart* RxTx, unsigned short usAddress,unsigned short usNRegs) ;
 void Get_Temp_Humidity_Value();
 float Get_Pressure_Value();
 /* USER CODE END PFP */
@@ -246,10 +237,10 @@ void data_exchange(struct Uart *RxTx) {
 			RxTx->rx_done_flag = false;
 			RxTx->p_uart_inbuf = RxTx->uart_inbuf;
 
-			if ((Check_Uart_inbuff(RxTx) == 0) && (RxTx->uart_inbuf[0] == DEV_ADDR)) {
+			if ((Check_Uart_inbuff(RxTx) == 0)
+					&& (RxTx->uart_inbuf[0] == DEV_ADDR)) {
 				RxTx->state = modbus_functions;
-			}
-			else {
+			} else {
 
 				HAL_TIM_Base_Stop_IT(&htim3);
 				RxTx->state = start_uart_receive_data;
@@ -261,7 +252,7 @@ void data_exchange(struct Uart *RxTx) {
 		break;
 
 	case modbus_functions:
-
+		modbus_function(RxTx);
 		RxTx->state = start_uart_transmit_data;
 		break;
 
@@ -269,7 +260,8 @@ void data_exchange(struct Uart *RxTx) {
 
 		if (RxTx->tx_ready_flag == true) {
 			RxTx->tx_ready_flag = false;
-			HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OK", 0x3);
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t*) "OK", 0x3);
+			HAL_UART_Transmit_IT(&huart1, RxTx->uart_outbuf, RxTx->byte_to_send);
 			RxTx->state = start_uart_receive_data;
 
 		}
@@ -279,42 +271,82 @@ void data_exchange(struct Uart *RxTx) {
 
 }
 
+void modbus_function(struct Uart* RxTx){
+
+	if (RxTx->uart_inbuf[1] == FC_RD_INPUT_RG){
+
+		  unn.ch_val[1] = RxTx->uart_inbuf[2];
+		  unn.ch_val[0] = RxTx->uart_inbuf[3];
+		  short wreq_addr = unn.w_val;
+		  unn.ch_val[1] = RxTx->uart_inbuf[4];
+		  unn.ch_val[0] = RxTx->uart_inbuf[5];
+		  short wreq_dt = unn.w_val;
+		  exception = ReadInputReg(RxTx, wreq_addr, wreq_dt);
 
 
+	}
+	else{
+
+		exception = EXCEPTION_CODE1;
+	}
+
+	if (exception){
+
+	      RxTx->uart_outbuf[0] = DEV_ADDR;
+	      RxTx->uart_outbuf[1] = RxTx->uart_inbuf[1] | 0x80;
+	      RxTx->uart_outbuf[2] = exception;
+	      crc16_out( 0x3, RxTx->uart_outbuf );
+	      RxTx->byte_to_send = 5;
+	      exception = 0;
+
+	}
 
 
-
-
-
-int ReadInputReg( unsigned char * RegBuffer, unsigned short usAddress, unsigned short usNRegs )
-{
-
-    int iRegIndex = 0;
-
-    if( ( usAddress >= REG_INPUT_START )
-        && ( usAddress + usNRegs <= REG_INPUT_START + REG_INPUT_NREGS ) )
-    {
-        iRegIndex = ( int )( usAddress - usRegInputStart );
-        while( usNRegs > 0 )
-        {
-            *RegBuffer++ =
-                ( unsigned char )( usRegInputBuf[iRegIndex] >> 8 );
-            *RegBuffer++ =
-                ( unsigned char )( usRegInputBuf[iRegIndex] & 0xFF );
-            iRegIndex++;
-            usNRegs--;
-        }
-    }
-    else
-    {
-        exception = EXCEPTION_CODE2;
-    }
-
-    return exception;
 }
 
+int ReadInputReg(struct Uart* RxTx, unsigned short usAddress,unsigned short usNRegs) {
+
+	int iRegIndex = 0x0;
+	int QuantityOfReg = usNRegs;
+	int RegBufferIndex = 0x3;
+
+	if ((usNRegs >= 0x0001) && (usNRegs <= REG_INPUT_NREGS))
+	{
+
+		if ((usAddress >= REG_INPUT_START) && (usAddress + usNRegs <= REG_INPUT_START + REG_INPUT_NREGS)) {
+			iRegIndex = (int) (usAddress - usRegInputStart);
+			usRegInputBuf[0] = 0x1;
+			while (usNRegs > 0) {
+				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] >> 8);
+				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] & 0xFF);
+				iRegIndex++;
+				usNRegs--;
+			}
+
+			  RxTx->uart_outbuf[0] = DEV_ADDR;
+			  RxTx->uart_outbuf[1] = FC_RD_INPUT_RG;
+			  RxTx->uart_outbuf[2] = QuantityOfReg<<1;
+			  RxTx->byte_to_send = (QuantityOfReg<<1)+0x5;
+			  crc16_out((QuantityOfReg<<1)+0x3, RxTx->uart_outbuf);
 
 
+		}
+
+		else
+
+		{
+			exception = EXCEPTION_CODE2;
+		}
+	}
+
+	else
+	{
+
+		exception = EXCEPTION_CODE3;
+	}
+
+	return exception;
+}
 
 float Get_Pressure_Value() {
 
@@ -326,14 +358,10 @@ float Get_Pressure_Value() {
 	return adc;
 }
 
+void Get_Temp_Humidity_Value() {
 
-void Get_Temp_Humidity_Value(){
-
-
-
-	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR,I2C_START_PERIODIC_READ_COMMAND ,0x2 ,i2c_inbuf , 0x40);
-
-
+	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, I2C_START_PERIODIC_READ_COMMAND,
+			0x2, i2c_inbuf, 0x40);
 
 }
 
@@ -365,6 +393,8 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 
 	return 0;
 }
+
+
 
 char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf) {
 	unsigned short w = 0xffff, w1;
@@ -399,6 +429,36 @@ char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf) {
 	else
 		return (char) -1;
 }
+
+
+void crc16_out(unsigned char size, unsigned char *outbuf)
+{
+  unsigned short w = 0xffff, w1;
+  char shift_cnt, jj;
+  unsigned short ii2 = 0;
+
+  jj = size;
+
+  for (; jj > 0; jj--)
+    {
+      w1 = (w >> 8) << 8;
+      w = (w1 + ((w - w1) ^ (unsigned short)outbuf[ii2++]));
+
+      for (shift_cnt = 0; shift_cnt < 8; shift_cnt++)
+        {
+          if ((w & 0x01) == 1)
+            w = ((w >> 1) ^ 0xa001);
+          else
+            w >>= 1;
+        }
+    }
+
+  outbuf[size++] = (char)(w & 0x00ff);
+  outbuf[size] = (char)(w >> 8);
+}
+
+
+
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart == &huart1) {
