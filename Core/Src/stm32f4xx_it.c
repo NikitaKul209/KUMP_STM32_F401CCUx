@@ -57,7 +57,9 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
 extern I2C_HandleTypeDef hi2c1;
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
@@ -203,6 +205,41 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles ADC1 global interrupt.
+  */
+void ADC_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC_IRQn 0 */
+
+  /* USER CODE END ADC_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC_IRQn 1 */
+
+  /* USER CODE END ADC_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
+  */
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
+	if (TIM_GET_ITSTATUS(&htim1,TIM_IT_UPDATE )) {
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_15);
+			HAL_TIM_Base_Stop_IT(&htim1);
+			TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
+			__HAL_TIM_SetCounter(&htim1,0x0);
+			uart.tx_ready_flag = true;
+
+		}
+  /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM2 global interrupt.
   */
 void TIM2_IRQHandler(void)
@@ -232,14 +269,7 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
-	if (TIM_GET_ITSTATUS(&htim3,TIM_IT_UPDATE )) {
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_15);
-		HAL_TIM_Base_Stop_IT(&htim3);
-		TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
-		__HAL_TIM_SetCounter(&htim3,0x0);
-		uart.tx_ready_flag = true;
 
-	}
   /* USER CODE END TIM3_IRQn 0 */
   HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */

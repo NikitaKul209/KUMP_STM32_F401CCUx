@@ -186,10 +186,13 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+	TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
+	HAL_TIM_Base_Start_IT(&htim3);
+	HAL_ADC_Start_IT(&hadc1);
 
   /* USER CODE END 2 */
 
@@ -272,7 +275,7 @@ void data_exchange(struct Uart *RxTx) {
 				RxTx->state = modbus_functions;
 			} else {
 
-				HAL_TIM_Base_Stop_IT(&htim3);
+				HAL_TIM_Base_Stop_IT(&htim2);
 				RxTx->state = start_uart_receive_data;
 			}
 			RxTx->receive_byte = 0;
@@ -507,7 +510,20 @@ void crc16_out(unsigned char size, unsigned char *outbuf)
 }
 
 
+void HAL_ADC_ConvCpltCallback (ADC_HandleTypeDef *hadc) {
 
+	if(hadc == &hadc1){
+
+		adc_val = HAL_ADC_GetValue(&hadc1) * 3.3 / 4096;
+		usRegInputBuf[1] = adc_val;
+
+	}
+
+
+
+
+
+}
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart == &huart1) {
@@ -520,14 +536,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 	if (huart == &huart1) {
 
+		HAL_TIM_Base_Stop_IT(&htim1);
 		HAL_TIM_Base_Stop_IT(&htim2);
-		HAL_TIM_Base_Stop_IT(&htim3);
 
+		__HAL_TIM_SetCounter(&htim1,0x0);
 		__HAL_TIM_SetCounter(&htim2,0x0);
-		__HAL_TIM_SetCounter(&htim3,0x0);
 
+		HAL_TIM_Base_Start_IT(&htim1);
 		HAL_TIM_Base_Start_IT(&htim2);
-		HAL_TIM_Base_Start_IT(&htim3);
 		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
 
 		uart.error_code = HAL_UART_GetError(&huart1);
