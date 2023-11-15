@@ -35,7 +35,16 @@ extern "C" {
 extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE BEGIN Private defines */
+struct Adc {
 
+	float adc[10];
+	bool adc_data_ready;
+	int adc_counter;
+	float adc_val;
+	float voltage;
+	float pressure;
+
+};
 /* USER CODE END Private defines */
 
 void MX_ADC1_Init(void);

@@ -65,11 +65,7 @@ const unsigned char EXCEPTION_CODE4 = 4;
 const unsigned char FC_04_HLENGTH_WITHOUT_CRC = 0x3;
 const unsigned char FC_04_HLENGTH_WITH_CRC = 0x5;
 
-const uint16_t I2C_DEV_ADDR = 0x44;
-const uint16_t I2C_START_READ_COMMAND = 0x2C06;
-const uint16_t I2C_START_PERIODIC_READ_COMMAND = 0x2737;
-const uint16_t I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
-const uint16_t I2C_RESET_COMMAND = 0x0006;
+
 
 const unsigned char DEV_ADDR = 0x40;
 
@@ -116,35 +112,32 @@ struct Uart uart = {
 .byte_to_send = 0,
 .state = start_uart_receive_data };
 
-struct Adc {
 
-	float adc[10];
-	bool adc_data_ready;
-	int adc_counter;
-	float adc_val;
-	float voltage;
-	float pressure;
-
-};
 
 struct Adc adc_struct = {
 
 .adc_counter = 0,
 .adc_data_ready = false,
-.adc = { 0 }
+.adc = { 0 },
+.adc_val = 0,
+.pressure = 0,
+.voltage = 0
 
 };
+
+
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void SystemClock_Config(void);
 signed char Check_Uart_inbuff(struct Uart *RxTx);
 void data_exchange(struct Uart *RxTx);
 void modbus_function(struct Uart *RxTx);
-char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf);
+unsigned char crc8(unsigned char *buff, unsigned int len);
+char crc16in(unsigned char size, unsigned char *inbuf);
 void crc16_out(unsigned char size, unsigned char *outbuf);
 int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,unsigned short usNRegs);
 void Get_Temp_Humidity_Value();
@@ -158,97 +151,101 @@ float get_filtred_data(float *buff);
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
-int main(void) {
-	/* USER CODE BEGIN 1 */
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
 
-	/* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-	/* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	/* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-	/* USER CODE END Init */
+  /* USER CODE END Init */
 
-	/* Configure the system clock */
-	SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-	/* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_ADC1_Init();
-	MX_USART1_UART_Init();
-	MX_I2C1_Init();
-	MX_TIM2_Init();
-	MX_TIM3_Init();
-	MX_TIM1_Init();
-	/* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_USART1_UART_Init();
+  MX_I2C1_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
+  MX_TIM1_Init();
+  /* USER CODE BEGIN 2 */
 	TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_ADC_Start_IT(&hadc1);
 
-	/* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 	while (1) {
 		Get_Pressure_Value(&adc_struct);
 		data_exchange(&uart);
 
 	}
 
-	/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-	/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 
-	/* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
-void SystemClock_Config(void) {
-	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_RCC_PWR_CLK_ENABLE();
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-		Error_Handler();
-	}
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Initializes the CPU, AHB and APB buses clocks
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
-		Error_Handler();
-	}
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE BEGIN 4 */
@@ -365,6 +362,7 @@ int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,
 		else
 
 		{
+
 			exception = EXCEPTION_CODE2;
 		}
 	}
@@ -376,6 +374,7 @@ int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,
 
 	return exception;
 }
+
 
 float Get_Pressure_Value(struct Adc *adc_s) {
 
@@ -404,12 +403,12 @@ float get_filtred_data(float *buff) {
 
 }
 
-void Get_Temp_Humidity_Value() {
-
-	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, I2C_START_PERIODIC_READ_COMMAND,
-			0x2, i2c_inbuf, 0x40);
-
-}
+//void Get_Temp_Humidity_Value() {
+//
+//	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, I2C_START_PERIODIC_READ_COMMAND,
+//			0x2, i2c_inbuf, 0x40);
+//
+//}
 
 signed char Check_Uart_inbuff(struct Uart *RxTx) {
 
@@ -432,7 +431,7 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 		return -2;
 	}
 
-	if (crc16in(RxTx->receive_byte, &unn, RxTx->uart_inbuf) != 0) {
+	if (crc16in(RxTx->receive_byte, RxTx->uart_inbuf) != 0) {
 
 		return -1;
 	}
@@ -440,7 +439,7 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 	return 0;
 }
 
-char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf) {
+char crc16in(unsigned char size, unsigned char *inbuf) {
 	unsigned short w = 0xffff, w1;
 	char shift_cnt, jj;
 	unsigned short ii1 = 0;
@@ -466,7 +465,6 @@ char crc16in(unsigned char size, union unn_t *unn, unsigned char *inbuf) {
 				w >>= 1;
 		}
 	}
-	unn->w_val = w;
 
 	if (w == u.w)
 		return 0;
@@ -496,6 +494,10 @@ void crc16_out(unsigned char size, unsigned char *outbuf) {
 	outbuf[size++] = (char) (w & 0x00ff);
 	outbuf[size] = (char) (w >> 8);
 }
+
+
+
+
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
@@ -565,16 +567,17 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
-void Error_Handler(void) {
-	/* USER CODE BEGIN Error_Handler_Debug */
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
 	while (1) {
 	}
-	/* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
