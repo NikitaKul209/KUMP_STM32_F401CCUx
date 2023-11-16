@@ -1,10 +1,14 @@
-
-
-
 #include "main.h"
 #include "sht31.h"
 #include "i2c.h"
 #include <stdbool.h>
+
+const uint16_t I2C_DEV_ADDR = 0x44;
+const unsigned short START_SINGLE_SHOT_MODE = 0x2c06;
+const unsigned short MEASUREMENT_PERIODIC_COMMANDS = 0x2737;
+const unsigned short START_PERIODIC_READ_COMMANDS = 0xE000;
+const unsigned short I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
+const unsigned short I2C_RESET_COMMAND = 0x0006;
 
  void sht3x_send_command(unsigned short command, unsigned char dev_addr)
 {
@@ -13,34 +17,47 @@
 	 HAL_I2C_Master_Transmit_IT(&hi2c1, dev_addr<<1, command_buffer, sizeof(command_buffer));
 
 
-
-
 }
 
 
- bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef hi2c, struct sht31_struct* sht31, float *temperature, float *humidity)
+bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn )
  {
- 	sht3x_send_command(MEASUREMENT_PERIODIC_COMMANDS, I2C_DEV_ADDR);
+
+ 	if(sht->rx_done_flag){
+
+ 		sht->rx_done_flag = false;
+
+ 	 	uint8_t temperature_crc = crc8(sht->in_buff, 2);
+ 	 	uint8_t humidity_crc = crc8(sht->in_buff + 3, 2);
+
+ 	 	if (temperature_crc != sht->in_buff[2] || humidity_crc != sht->in_buff[5]) {
+ 	 		return false;
+ 	 	}
+
+ 	 	unn->ch_val[0] = sht->in_buff[0];
+ 	 	unn->ch_val[1] = sht->in_buff[1];
+ 	 	float temperature = unn->w_val;
+
+ 	 	unn->ch_val[0] = sht->in_buff[3];
+ 	 	unn->ch_val[1] = sht->in_buff[4];
+ 	 	float humidity = unn->w_val;
+
+ 	 	temperature =  -45.0f + 175.0f * temperature / 65535.0f;
+ 	 	humidity = 100.0f * humidity / 65535.0f;
+
+ 	 	sht->temperature[sht->byte_counter++] = temperature;
+ 	 	sht->temperature[sht->byte_counter++] = humidity;
+
+ 	 	if (sht->byte_counter == 4){
+
+ 	 		sht->byte_counter = 0;
+ 	 	}
 
 
- 	HAL_I2C_Mem_Read_IT(&hi2c, I2C_DEV_ADDR, START_PERIODIC_READ_COMMANDS, 0x2, sht31->in_buff, 0x6);
+ 	 	return true;
 
- 	uint8_t temperature_crc = crc8(sht31->in_buff, 2);
- 	uint8_t humidity_crc = crc8(sht31->in_buff + 3, 2);
-
- 	if (temperature_crc != sht31->in_buff[2] || humidity_crc != sht31->in_buff[5]) {
- 		return false;
  	}
-
- 	sht31->temperature = (sht31->in_buff[0]>>)
-
- 	uint16_t temperature_raw = uint8_to_uint16(buffer[0], buffer[1]);
- 	uint16_t humidity_raw = uint8_to_uint16(buffer[3], buffer[4]);
-
- 	*temperature = -45.0f + 175.0f * (float)temperature_raw / 65535.0f;
- 	*humidity = 100.0f * (float)humidity_raw / 65535.0f;
-
- 	return true;
+return false;
  }
 
 

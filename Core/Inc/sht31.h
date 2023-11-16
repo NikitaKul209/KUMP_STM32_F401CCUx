@@ -1,30 +1,26 @@
 
-#ifndef SRC_SHT31_H_
-#define SRC_SHT31_H_
+#ifndef _SHT31_H_
+#define _SHT31_H_
 
+extern const uint16_t I2C_DEV_ADDR ;
+extern const unsigned short START_SINGLE_SHOT_MODE;
 
-const uint16_t I2C_DEV_ADDR = 0x44;
-
-const unsigned short MEASUREMENT_PERIODIC_COMMANDS = 0x2737;
-const unsigned short START_PERIODIC_READ_COMMANDS = 0xE000;
-const unsigned short I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
-const unsigned short I2C_RESET_COMMAND = 0x0006;
 
 struct sht31_struct{
 
 unsigned char in_buff[6];
-float temperature;
-float humidity;
-
+float temperature[4];
+float humidity[4];
+bool rx_done_flag;
+int byte_counter;
 
 };
 
+extern struct sht31_struct sht31;
 
-
-
-
+bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht31,union unn_t *unn );
 unsigned char crc8(unsigned char *buff, unsigned int len);
-extern void sht3x_send_command(unsigned short command, unsigned char dev_addr);
+
 
 
 

@@ -50,6 +50,11 @@ struct Uart {
 	uint8_t state;
 
 };
+
+
+extern struct Uart uart;
+extern bool rx_done_flag;
+extern bool tx_ready_flag;
 /* USER CODE END Private defines */
 
 void MX_USART1_UART_Init(void);

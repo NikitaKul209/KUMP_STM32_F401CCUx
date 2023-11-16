@@ -41,9 +41,15 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern struct Uart uart;
-extern bool rx_done_flag;
-extern bool tx_ready_flag;
+
+
+union unn_t {
+	char ch_val[2];
+	unsigned short w_val;
+};
+
+
+
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

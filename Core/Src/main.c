@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "image.h"
+#include "sht31.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,10 +86,9 @@ bool PE_Error = false;
 
 int exception = 0;
 
-union unn_t {
-	char ch_val[2];
-	unsigned short w_val;
-} unn;
+
+
+
 
 enum states {
 	start_uart_receive_data,
@@ -97,7 +97,19 @@ enum states {
 	modbus_functions
 };
 
-uint8_t i2c_inbuf[256];
+
+union unn_t unn;
+
+
+struct sht31_struct sht31 = {
+
+.byte_counter = 0,
+.humidity = { 0 },
+.temperature = { 0 } ,
+.in_buff = { 0 },
+.rx_done_flag = false
+
+};
 
 struct Uart uart = {
 
@@ -110,7 +122,8 @@ struct Uart uart = {
 .p_uart_outbuf = uart.uart_outbuf,
 .receive_byte = 0,
 .byte_to_send = 0,
-.state = start_uart_receive_data };
+.state = start_uart_receive_data
+};
 
 
 
@@ -184,6 +197,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
@@ -196,6 +210,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
+		sht3x_read_temperature_and_humidity(&hi2c1, &sht31, &unn);
 		Get_Pressure_Value(&adc_struct);
 		data_exchange(&uart);
 
