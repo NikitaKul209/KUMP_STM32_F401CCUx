@@ -41,15 +41,22 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+#define ADC_FILTR_WINDOW 0xA
+#define I2C_FILTR_WINDOW 0x4
 
+
+#define PMNC_BIT_POS 0
+#define THMNC_BIT_POS 1
+#define CRCE_BIT_POS 2
 
 union unn_t {
 	char ch_val[2];
 	unsigned short w_val;
 };
 
-
-
+float get_filtred_data(float *buff,int window);
+void set_status_flag(int flag_pos);
+void reset_status_flag(int flag_pos);
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

@@ -66,8 +66,6 @@ const unsigned char EXCEPTION_CODE4 = 4;
 const unsigned char FC_04_HLENGTH_WITHOUT_CRC = 0x3;
 const unsigned char FC_04_HLENGTH_WITH_CRC = 0x5;
 
-
-
 const unsigned char DEV_ADDR = 0x40;
 
 const unsigned int ADU_MIN = 5;
@@ -78,6 +76,9 @@ unsigned short usRegInputBuf[4] = {0x0};
 
 unsigned short wreq_addr;
 unsigned short wreq_dt;
+
+
+
 
 
 bool FE_Error = false;
@@ -106,7 +107,7 @@ struct sht31_struct sht31 = {
 .byte_counter = 0,
 .humidity = { 0 },
 .temperature = { 0 } ,
-.in_buff = { 0 },
+.i2c_inbuff = { 0 },
 .rx_done_flag = false
 
 };
@@ -155,7 +156,10 @@ void crc16_out(unsigned char size, unsigned char *outbuf);
 int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,unsigned short usNRegs);
 void Get_Temp_Humidity_Value();
 float Get_Pressure_Value(struct Adc *adc_s);
-float get_filtred_data(float *buff);
+
+//float get_filtred_data(float *buff,int window);
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -199,10 +203,16 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+
+  set_status_flag(PMNC_BIT_POS);
+  set_status_flag(THMNC_BIT_POS);
+
 	TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 	TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
+	TIM_GET_CLEAR_IT(&htim4,TIM_IT_UPDATE);
 	HAL_TIM_Base_Start_IT(&htim3);
+	HAL_TIM_Base_Start_IT(&htim4);
 	HAL_ADC_Start_IT(&hadc1);
 
   /* USER CODE END 2 */
@@ -210,7 +220,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		sht3x_read_temperature_and_humidity(&hi2c1, &sht31, &unn);
+		sht3x_read_temperature_and_humidity(&hi2c1, &sht31, &unn, usRegInputBuf);
 		Get_Pressure_Value(&adc_struct);
 		data_exchange(&uart);
 
@@ -396,34 +406,46 @@ float Get_Pressure_Value(struct Adc *adc_s) {
 	if (adc_s->adc_data_ready) {
 		adc_s->adc_data_ready = false;
 
-		adc_s->adc_val = get_filtred_data(adc_s->adc);
+		adc_s->adc_val = get_filtred_data(adc_s->adc, ADC_FILTR_WINDOW);
 		adc_s->voltage = adc_s->adc_val * 3.3 / 4096;
 		adc_s->pressure = (adc_s->voltage / 3.3 + 0.00842) / 0.002421;
 
 		usRegInputBuf[1] = adc_s->pressure;
+		reset_status_flag(PMNC_BIT_POS);
 
 	}
 
 	return adc_s->adc_val;
 }
 
-float get_filtred_data(float *buff) {
+
+
+float get_filtred_data(float *buff,int window) {
 
 	float sum = 0;
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < window; i++) {
 
 		sum += buff[i];
 	}
-	return sum / 10;
+	return sum / window;
 
 }
 
-//void Get_Temp_Humidity_Value() {
-//
-//	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, I2C_START_PERIODIC_READ_COMMAND,
-//			0x2, i2c_inbuf, 0x40);
-//
-//}
+
+
+void set_status_flag(int flag_pos){
+
+	usRegInputBuf[0] |= 1<<flag_pos;
+
+}
+
+void reset_status_flag(int flag_pos){
+
+	usRegInputBuf[0] &= ~(1<<flag_pos);
+
+}
+
+
 
 signed char Check_Uart_inbuff(struct Uart *RxTx) {
 
@@ -508,6 +530,22 @@ void crc16_out(unsigned char size, unsigned char *outbuf) {
 
 	outbuf[size++] = (char) (w & 0x00ff);
 	outbuf[size] = (char) (w >> 8);
+}
+
+
+
+
+
+
+
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
+
+	if(hi2c == &hi2c1){
+
+		sht31.rx_done_flag = true;
+
+	}
+
 }
 
 

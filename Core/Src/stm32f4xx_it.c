@@ -285,7 +285,7 @@ void TIM3_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR, START_SINGLE_SHOT_MODE, 0x2, sht31.in_buff, 0x6);
+	HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR<<1, START_SINGLE_SHOT_MODE, 0x2, sht31.i2c_inbuff, 0x6);
 
   /* USER CODE END TIM4_IRQn 0 */
   HAL_TIM_IRQHandler(&htim4);
