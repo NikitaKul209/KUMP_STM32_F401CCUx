@@ -20,7 +20,7 @@ const unsigned short I2C_RESET_COMMAND = 0x0006;
 }
 
 
-bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, unsigned short *RegBuff )
+bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, signed short *RegBuff )
  {
 
  	if(sht->rx_done_flag){
@@ -32,16 +32,16 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 
  	 	if (temperature_crc == sht->i2c_inbuff[2] && humidity_crc == sht->i2c_inbuff[5]) {
 
- 	 		unn->ch_val[0] = sht->i2c_inbuff[0];
-			unn->ch_val[1] = sht->i2c_inbuff[1];
+ 	 		unn->ch_val[1] = sht->i2c_inbuff[0];
+			unn->ch_val[0] = sht->i2c_inbuff[1];
 			float temperature = unn->w_val;
 
-			unn->ch_val[0] = sht->i2c_inbuff[3];
-			unn->ch_val[1] = sht->i2c_inbuff[4];
+			unn->ch_val[1] = sht->i2c_inbuff[3];
+			unn->ch_val[0] = sht->i2c_inbuff[4];
 			float humidity = unn->w_val;
 
-			temperature =  -45.0f + 175.0f * temperature / 65535.0f;
-			humidity = 100.0f * humidity / 65535.0f;
+			temperature = (-45.0f + 175.0f * temperature / 65535.0f)*10;
+			humidity = (100.0f * humidity / 65535.0f)*10;
 
 			sht->temperature[sht->byte_counter] = temperature;
 			sht->humidity[sht->byte_counter++] = humidity;
@@ -49,9 +49,8 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 			sht->average_temperature = get_filtred_data( sht->temperature, 4);
 			sht->average_humidity = get_filtred_data( sht->humidity, 4);
 
-			RegBuff[1] = sht->average_temperature;
-			RegBuff[2] = sht->average_humidity;
-
+			RegBuff[2] = sht->average_temperature;
+			RegBuff[3] = sht->average_humidity;
 			reset_status_flag(THMNC_BIT_POS);
 			reset_status_flag(CRCE_BIT_POS);
 

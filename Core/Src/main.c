@@ -72,7 +72,7 @@ const unsigned int ADU_MIN = 5;
 const unsigned int ADU_MAX = 256;
 
 unsigned short usRegInputStart = 0x0;
-unsigned short usRegInputBuf[4] = {0x0};
+signed short usRegInputBuf[4] = {0x0};
 
 unsigned short wreq_addr;
 unsigned short wreq_dt;
@@ -153,7 +153,7 @@ void modbus_function(struct Uart *RxTx);
 unsigned char crc8(unsigned char *buff, unsigned int len);
 char crc16in(unsigned char size, unsigned char *inbuf);
 void crc16_out(unsigned char size, unsigned char *outbuf);
-int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,unsigned short usNRegs);
+int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs);
 void Get_Temp_Humidity_Value();
 float Get_Pressure_Value(struct Adc *adc_s);
 
@@ -365,21 +365,20 @@ void modbus_function(struct Uart *RxTx) {
 
 }
 
-int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,
-		unsigned short usNRegs) {
+int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs) {
 
 	int iRegIndex = 0x0;
 	int RegBufferIndex = 0x3;
 
-	if ((usNRegs >= 0x0001) && (usNRegs <= REG_INPUT_NREGS)) {
+	if ((sNRegs >= 0x0001) && (sNRegs <= REG_INPUT_NREGS)) {
 
-		if ((usAddress >= REG_INPUT_START) && (usAddress + usNRegs <= REG_INPUT_START + REG_INPUT_NREGS)) {
+		if ((usAddress >= REG_INPUT_START) && (usAddress + sNRegs <= REG_INPUT_START + REG_INPUT_NREGS)) {
 			iRegIndex = (int) (usAddress - usRegInputStart);
-			while (usNRegs > 0) {
+			while (sNRegs > 0) {
 				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] >> 8);
 				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] & 0xFF);
 				iRegIndex++;
-				usNRegs--;
+				sNRegs--;
 			}
 
 		}
@@ -410,7 +409,7 @@ float Get_Pressure_Value(struct Adc *adc_s) {
 		adc_s->voltage = adc_s->adc_val * 3.3 / 4096;
 		adc_s->pressure = (adc_s->voltage / 3.3 + 0.00842) / 0.002421;
 
-		usRegInputBuf[1] = adc_s->pressure;
+		usRegInputBuf[1] = adc_s->pressure*10;
 		reset_status_flag(PMNC_BIT_POS);
 
 	}

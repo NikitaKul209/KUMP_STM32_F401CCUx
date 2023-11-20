@@ -20,7 +20,7 @@ int byte_counter;
 
 extern struct sht31_struct sht31;
 
-bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, unsigned short *RegBuff );
+bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, signed short *RegBuff );
 unsigned char crc8(unsigned char *buff, unsigned int len);
 
 
