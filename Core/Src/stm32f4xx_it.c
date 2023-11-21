@@ -227,7 +227,6 @@ void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
 	if (TIM_GET_ITSTATUS(&htim1,TIM_IT_UPDATE )) {
-			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_15);
 			HAL_TIM_Base_Stop_IT(&htim1);
 			TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 			__HAL_TIM_SetCounter(&htim1,0x0);
@@ -249,7 +248,6 @@ void TIM2_IRQHandler(void)
   /* USER CODE BEGIN TIM2_IRQn 0 */
 
 	if (TIM_GET_ITSTATUS(&htim2,TIM_IT_UPDATE )) {
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
 		HAL_TIM_Base_Stop_IT(&htim2);
 		TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 		__HAL_TIM_SetCounter(&htim2,0x0);

@@ -24,7 +24,7 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
  {
 
  	if(sht->rx_done_flag){
-
+ 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
  		sht->rx_done_flag = false;
 
  	 	uint8_t temperature_crc = crc8(sht->i2c_inbuff, 2);
@@ -46,8 +46,8 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 			sht->temperature[sht->byte_counter] = temperature;
 			sht->humidity[sht->byte_counter++] = humidity;
 
-			sht->average_temperature = get_filtred_data( sht->temperature, 4);
-			sht->average_humidity = get_filtred_data( sht->humidity, 4);
+			sht->average_temperature = get_filtred_data( sht->temperature, 10);
+			sht->average_humidity = get_filtred_data( sht->humidity, 10);
 
 			RegBuff[2] = sht->average_temperature;
 			RegBuff[3] = sht->average_humidity;
@@ -63,15 +63,12 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 
  	 	}
 
-
-
-
- 	 	if (sht->byte_counter >= 4){
+ 	 	if (sht->byte_counter >= 10){
 
  	 		sht->byte_counter = 0;
  	 	}
 
-
+ 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
  	 	return true;
 
  	}
