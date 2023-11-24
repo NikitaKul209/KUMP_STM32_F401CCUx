@@ -24,7 +24,7 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
  {
 
  	if(sht->rx_done_flag){
- 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+
  		sht->rx_done_flag = false;
 
  	 	uint8_t temperature_crc = crc8(sht->i2c_inbuff, 2);
@@ -46,29 +46,48 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 			sht->temperature[sht->byte_counter] = temperature;
 			sht->humidity[sht->byte_counter++] = humidity;
 
-			sht->average_temperature = get_filtred_data( sht->temperature, 10);
-			sht->average_humidity = get_filtred_data( sht->humidity, 10);
+			sht->average_temperature = get_filtred_data( sht->temperature, I2C_FILTR_WINDOW);
+			sht->average_humidity = get_filtred_data( sht->humidity, I2C_FILTR_WINDOW);
 
 			RegBuff[2] = sht->average_temperature;
 			RegBuff[3] = sht->average_humidity;
+
+			if (sht->byte_counter >= I2C_FILTR_WINDOW){
+
+		 	 		sht->byte_counter = 0;
+		 	 	}
+
 			reset_status_flag(THMNC_BIT_POS);
 			reset_status_flag(CRCE_BIT_POS);
-
 
  	 	}
  	 	else{
 
  	 		set_status_flag(CRCE_BIT_POS);
-
-
  	 	}
 
- 	 	if (sht->byte_counter >= 10){
+		if(sht->average_temperature > MAX_TEMP * 10 || sht->average_temperature < MIN_TEMP * 10)
+		{
+			set_status_flag(TOL_BIT_POS);
+		}
+		else
+		{
+			reset_status_flag(TOL_BIT_POS);
+		}
 
- 	 		sht->byte_counter = 0;
- 	 	}
+		if(sht->average_humidity >MAX_HUM * 10 || sht->average_humidity < MIN_HUM * 10)
+		{
+			set_status_flag(HOL_BIT_POS);
+		}
+		else
+		{
+			reset_status_flag(HOL_BIT_POS);
+		}
 
- 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+
+
+
+
  	 	return true;
 
  	}

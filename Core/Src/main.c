@@ -412,6 +412,17 @@ float Get_Pressure_Value(struct Adc *adc_s) {
 		usRegInputBuf[1] = adc_s->pressure*10;
 		reset_status_flag(PMNC_BIT_POS);
 
+		if (adc_s->pressure > MAX_PRESS || adc_s->pressure < MIN_PRESS){
+
+			set_status_flag(POL_BIT_POS);
+		}
+		else
+		{
+			reset_status_flag(POL_BIT_POS);
+		}
+
+
+
 	}
 
 	return adc_s->adc_val;

@@ -2,6 +2,10 @@
 #ifndef _SHT31_H_
 #define _SHT31_H_
 
+#define MAX_TEMP 125
+#define MIN_TEMP -40
+#define MAX_HUM 100
+#define MIN_HUM 0
 extern const uint16_t I2C_DEV_ADDR ;
 extern const unsigned short START_SINGLE_SHOT_MODE;
 

@@ -42,12 +42,17 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 #define ADC_FILTR_WINDOW 0xA
-#define I2C_FILTR_WINDOW 0x4
+#define I2C_FILTR_WINDOW 0xA
 
+#define MAX_PRESS 406
+#define MIN_PRESS 20
 
-#define PMNC_BIT_POS 0
-#define THMNC_BIT_POS 1
-#define CRCE_BIT_POS 2
+#define PMNC_BIT_POS      0
+#define THMNC_BIT_POS     1
+#define CRCE_BIT_POS      2
+#define POL_BIT_POS       3
+#define TOL_BIT_POS       4
+#define HOL_BIT_POS       5
 
 union unn_t {
 	char ch_val[2];
