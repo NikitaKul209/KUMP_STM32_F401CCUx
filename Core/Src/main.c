@@ -300,6 +300,9 @@ void data_exchange(struct Uart *RxTx) {
 				HAL_TIM_Base_Stop_IT(&htim2);
 				RxTx->state = start_uart_receive_data;
 			}
+			FE_Error = 0;
+			OE_Error = 0;
+			PE_Error = 0;
 			RxTx->receive_byte = 0;
 
 		}
@@ -470,10 +473,6 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 	}
 
 	if (FE_Error || OE_Error || PE_Error) {
-
-		FE_Error = 0;
-		OE_Error = 0;
-		PE_Error = 0;
 
 		return -2;
 	}
