@@ -27,7 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include "image.h"
+
 #include "sht31.h"
 #include <stdlib.h>
 #include <stdio.h>
