@@ -77,19 +77,11 @@ signed short usRegInputBuf[4] = {0x0};
 unsigned short wreq_addr;
 unsigned short wreq_dt;
 
-
-
-
-
 bool FE_Error = false;
 bool OE_Error = false;
 bool PE_Error = false;
-
+bool NE_Error = false;
 int exception = 0;
-
-
-
-
 
 enum states {
 	start_uart_receive_data,
@@ -100,7 +92,6 @@ enum states {
 
 
 union unn_t unn;
-
 
 struct sht31_struct sht31 = {
 
@@ -125,8 +116,6 @@ struct Uart uart = {
 .byte_to_send = 0,
 .state = start_uart_receive_data
 };
-
-
 
 struct Adc adc_struct = {
 
@@ -207,13 +196,13 @@ int main(void)
   set_status_flag(PMNC_BIT_POS);
   set_status_flag(THMNC_BIT_POS);
 
-	TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
-	TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
-	TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
-	TIM_GET_CLEAR_IT(&htim4,TIM_IT_UPDATE);
-	HAL_TIM_Base_Start_IT(&htim3);
-	HAL_TIM_Base_Start_IT(&htim4);
-	HAL_ADC_Start_IT(&hadc1);
+  TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
+  TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
+  TIM_GET_CLEAR_IT(&htim3,TIM_IT_UPDATE);
+  TIM_GET_CLEAR_IT(&htim4,TIM_IT_UPDATE);
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_ADC_Start_IT(&hadc1);
 
   /* USER CODE END 2 */
 
@@ -281,8 +270,10 @@ void data_exchange(struct Uart *RxTx) {
 
 	case start_uart_receive_data:
 
-		HAL_UART_Receive_IT(&huart1, RxTx->p_uart_inbuf++, 1);
-		RxTx->state = check_received_data;
+		if(UART_Start_Receive_IT(&huart1, uart.p_uart_inbuf++, 1)==HAL_OK){
+
+			RxTx->state = check_received_data;
+		};
 
 		break;
 
@@ -303,6 +294,7 @@ void data_exchange(struct Uart *RxTx) {
 			FE_Error = 0;
 			OE_Error = 0;
 			PE_Error = 0;
+			NE_Error = 0;
 			RxTx->receive_byte = 0;
 
 		}
@@ -472,7 +464,7 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 		return -3;
 	}
 
-	if (FE_Error || OE_Error || PE_Error) {
+	if (FE_Error || OE_Error || PE_Error||NE_Error) {
 
 		return -2;
 	}
@@ -595,15 +587,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 		HAL_TIM_Base_Start_IT(&htim1);
 		HAL_TIM_Base_Start_IT(&htim2);
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
 
 		uart.error_code = HAL_UART_GetError(&huart1);
-		HAL_UART_Receive_IT(&huart1, uart.p_uart_inbuf++, 1);
 		uart.receive_byte++;
+		UART_Start_Receive_IT(&huart1, uart.p_uart_inbuf++, 1);
 
 	}
 
 }
+
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
@@ -621,8 +613,11 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
 			OE_Error = true;
 		}
-		uart.error_code = 0;
+		if (uart.error_code &  USART_SR_NE ){
 
+			NE_Error = true;
+		}
+		uart.error_code = 0;
 	}
 }
 
