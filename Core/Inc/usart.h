@@ -44,7 +44,7 @@ struct Uart {
 	uint8_t uart_outbuf[256];
 	uint8_t *p_uart_inbuf;
 	uint8_t *p_uart_outbuf;
-	uint32_t error_code;
+	uint32_t uart_ecode;
 	uint8_t receive_byte;
 	uint8_t byte_to_send;
 	uint8_t state;

@@ -60,31 +60,30 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 			reset_status_flag(THMNC_BIT_POS);
 			reset_status_flag(CRCE_BIT_POS);
 
+			if(sht->average_temperature > MAX_TEMP * 10 || sht->average_temperature < MIN_TEMP * 10)
+				{
+					set_status_flag(TOL_BIT_POS);
+				}
+				else
+				{
+					reset_status_flag(TOL_BIT_POS);
+				}
+
+				if(sht->average_humidity >MAX_HUM * 10 || sht->average_humidity < MIN_HUM * 10)
+				{
+					set_status_flag(HOL_BIT_POS);
+				}
+				else
+				{
+					reset_status_flag(HOL_BIT_POS);
+				}
+
  	 	}
- 	 	else{
+ 	 	else
+ 	 	{
 
  	 		set_status_flag(CRCE_BIT_POS);
  	 	}
-
-		if(sht->average_temperature > MAX_TEMP * 10 || sht->average_temperature < MIN_TEMP * 10)
-		{
-			set_status_flag(TOL_BIT_POS);
-		}
-		else
-		{
-			reset_status_flag(TOL_BIT_POS);
-		}
-
-		if(sht->average_humidity >MAX_HUM * 10 || sht->average_humidity < MIN_HUM * 10)
-		{
-			set_status_flag(HOL_BIT_POS);
-		}
-		else
-		{
-			reset_status_flag(HOL_BIT_POS);
-		}
-
-
 
 
 

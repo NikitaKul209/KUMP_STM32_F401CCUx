@@ -510,6 +510,7 @@ char crc16in(unsigned char size, unsigned char *inbuf) {
 		return (char) -1;
 }
 
+
 void crc16_out(unsigned char size, unsigned char *outbuf) {
 	unsigned short w = 0xffff, w1;
 	char shift_cnt, jj;
@@ -550,7 +551,12 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
 }
 
 
+HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
 
+	sht31.i2c_ecode = HAL_I2C_GetError(hi2c);
+//	I2C_FLAG_ARLO
+
+}
 
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
@@ -588,7 +594,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		HAL_TIM_Base_Start_IT(&htim1);
 		HAL_TIM_Base_Start_IT(&htim2);
 
-		uart.error_code = HAL_UART_GetError(&huart1);
+		uart.uart_ecode = HAL_UART_GetError(&huart1);
 		uart.receive_byte++;
 		UART_Start_Receive_IT(&huart1, uart.p_uart_inbuf++, 1);
 
@@ -601,23 +607,24 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
 	if (huart == &huart1) {
 
-		if (uart.error_code & UART_FLAG_FE) {
+		if (uart.uart_ecode & UART_FLAG_FE) {
 
 			FE_Error = true;
 		}
-		if (uart.error_code & UART_FLAG_PE) {
+		if (uart.uart_ecode & UART_FLAG_PE) {
 
 			PE_Error = true;
 		}
-		if (uart.error_code & UART_FLAG_ORE) {
+		if (uart.uart_ecode & UART_FLAG_ORE) {
 
 			OE_Error = true;
 		}
-		if (uart.error_code &  USART_SR_NE ){
+		if (uart.uart_ecode &  USART_SR_NE ){
 
 			NE_Error = true;
 		}
-		uart.error_code = 0;
+		uart.uart_ecode = 0;
+
 	}
 }
 

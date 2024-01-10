@@ -19,6 +19,7 @@ float average_temperature;
 float average_humidity;
 bool rx_done_flag;
 int byte_counter;
+uint32_t i2c_ecode;
 
 };
 
