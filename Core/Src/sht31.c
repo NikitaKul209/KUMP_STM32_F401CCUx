@@ -22,7 +22,14 @@ const unsigned short I2C_RESET_COMMAND = 0x0006;
 
 bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, signed short *RegBuff )
  {
+	if (sht->i2c_start_flag){
 
+		sht->i2c_start_flag = false;
+		if (HAL_I2C_Mem_Read_IT(hi2c, I2C_DEV_ADDR<<1, START_SINGLE_SHOT_MODE, 0x2, sht->i2c_inbuff, 0x6) == HAL_ERROR){
+
+			I2C_Deinit();
+		};
+	}
  	if(sht->rx_done_flag){
 
  		sht->rx_done_flag = false;
@@ -93,6 +100,22 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 return false;
  }
 
+
+void I2C_Deinit(void){
+	HAL_TIM_Base_Stop_IT(&htim4);
+	 __HAL_I2C_DISABLE(&hi2c1);
+
+	TIM_GET_CLEAR_IT(&htim4,TIM_IT_UPDATE);
+	__HAL_TIM_SetCounter(&htim4,0x0);
+	HAL_I2C_AbortCpltCallback(&hi2c1);
+	HAL_I2C_MspDeInit(&hi2c1);
+	HAL_I2C_MspInit(&hi2c1);
+
+	HAL_TIM_Base_Start_IT(&htim4);
+
+
+
+}
 
  unsigned char crc8(unsigned char *buff, unsigned int len)
  {

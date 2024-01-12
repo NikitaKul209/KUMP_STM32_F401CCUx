@@ -251,7 +251,6 @@ void TIM2_IRQHandler(void)
 		HAL_TIM_Base_Stop_IT(&htim2);
 		TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
 		__HAL_TIM_SetCounter(&htim2,0x0);
-		HAL_UART_AbortReceive_IT(&huart1);
 		uart.tx_ready_flag = true;
 
 	}
@@ -284,8 +283,12 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 	if (TIM_GET_ITSTATUS(&htim4,TIM_IT_UPDATE )) {
+		HAL_TIM_Base_Stop_IT(&htim4);
+				TIM_GET_CLEAR_IT(&htim4,TIM_IT_UPDATE);
+				__HAL_TIM_SetCounter(&htim4,0x0);
+				HAL_TIM_Base_Start_IT(&htim4);
 
-		HAL_I2C_Mem_Read_IT(&hi2c1, I2C_DEV_ADDR<<1, START_SINGLE_SHOT_MODE, 0x2, sht31.i2c_inbuff, 0x6);
+		sht31.i2c_start_flag = true;
 	}
 
 

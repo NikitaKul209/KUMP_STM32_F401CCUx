@@ -99,8 +99,8 @@ struct sht31_struct sht31 = {
 .humidity = { 0 },
 .temperature = { 0 } ,
 .i2c_inbuff = { 0 },
-.rx_done_flag = false
-
+.rx_done_flag = false,
+.i2c_start_flag = false
 };
 
 struct Uart uart = {
@@ -203,6 +203,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_ADC_Start_IT(&hadc1);
+  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
 
   /* USER CODE END 2 */
 
@@ -298,6 +299,17 @@ void data_exchange(struct Uart *RxTx) {
 			RxTx->receive_byte = 0;
 
 		}
+//		else if (RxTx->tx_ready_flag==true && RxTx->rx_done_flag == false){
+//			RxTx->tx_ready_flag=false;
+//			FE_Error = 0;
+//				OE_Error = 0;
+//				PE_Error = 0;
+//				NE_Error = 0;
+//				RxTx->receive_byte = 0;
+//				RxTx->p_uart_inbuf = RxTx->uart_inbuf;
+//
+//			RxTx->state = start_uart_receive_data;
+//		}
 
 		break;
 
@@ -551,10 +563,10 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
 }
 
 
+
 HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
 
-	sht31.i2c_ecode = HAL_I2C_GetError(hi2c);
-//	I2C_FLAG_ARLO
+	I2C_Deinit();
 
 }
 
@@ -581,6 +593,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	}
 }
 
+
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 	if (huart == &huart1) {
@@ -597,6 +611,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		uart.uart_ecode = HAL_UART_GetError(&huart1);
 		uart.receive_byte++;
 		UART_Start_Receive_IT(&huart1, uart.p_uart_inbuf++, 1);
+
+
+
 
 	}
 
@@ -618,6 +635,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 		if (uart.uart_ecode & UART_FLAG_ORE) {
 
 			OE_Error = true;
+			__HAL_UART_CLEAR_OREFLAG(&huart1);
 		}
 		if (uart.uart_ecode &  USART_SR_NE ){
 
