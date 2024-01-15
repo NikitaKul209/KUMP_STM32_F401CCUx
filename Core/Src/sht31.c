@@ -25,13 +25,14 @@ bool sht3x_read_temperature_and_humidity(I2C_HandleTypeDef *hi2c, struct sht31_s
 	if (sht->i2c_start_flag){
 
 		sht->i2c_start_flag = false;
-		if (HAL_I2C_Mem_Read_IT(hi2c, I2C_DEV_ADDR<<1, START_SINGLE_SHOT_MODE, 0x2, sht->i2c_inbuff, 0x6) == HAL_ERROR){
-
+		if (HAL_I2C_Mem_Read_IT(hi2c, I2C_DEV_ADDR<<1, START_SINGLE_SHOT_MODE, 0x2, sht->i2c_inbuff, 0x6) != HAL_OK){
+			set_status_flag(IICE_BIT_POS);
 			I2C_Deinit();
 		};
+
 	}
  	if(sht->rx_done_flag){
-
+ 		reset_status_flag(IICE_BIT_POS);
  		sht->rx_done_flag = false;
 
  	 	uint8_t temperature_crc = crc8(sht->i2c_inbuff, 2);
@@ -110,7 +111,7 @@ void I2C_Deinit(void){
 	HAL_I2C_AbortCpltCallback(&hi2c1);
 	HAL_I2C_MspDeInit(&hi2c1);
 	HAL_I2C_MspInit(&hi2c1);
-
+	__HAL_I2C_ENABLE(&hi2c1);
 	HAL_TIM_Base_Start_IT(&htim4);
 
 

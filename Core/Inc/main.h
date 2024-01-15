@@ -53,6 +53,7 @@ extern "C" {
 #define POL_BIT_POS       3
 #define TOL_BIT_POS       4
 #define HOL_BIT_POS       5
+#define IICE_BIT_POS      6
 
 union unn_t {
 	char ch_val[2];
