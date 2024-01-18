@@ -195,6 +195,7 @@ int main(void)
 
   set_status_flag(PMNC_BIT_POS);
   set_status_flag(THMNC_BIT_POS);
+  HAL_Delay(2);
 
   TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   TIM_GET_CLEAR_IT(&htim2,TIM_IT_UPDATE);
@@ -203,7 +204,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_ADC_Start_IT(&hadc1);
-  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+
 
   /* USER CODE END 2 */
 
@@ -565,8 +566,8 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
 
 
 HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
+	sht31.i2c_ecode = true;
 
-	I2C_Deinit();
 
 }
 
