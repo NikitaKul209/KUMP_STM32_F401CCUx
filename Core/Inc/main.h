@@ -60,9 +60,9 @@ union unn_t {
 	unsigned short w_val;
 };
 
-float get_filtred_data(float *buff,int window);
-void set_status_flag(int flag_pos);
-void reset_status_flag(int flag_pos);
+float Get_Filtred_Data(float *buff,int window);
+void Set_Status_Flag(int flag_pos);
+void Reset_Status_Flag(int flag_pos);
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

@@ -71,8 +71,8 @@ const unsigned char DEV_ADDR = 0x40;
 const unsigned int ADU_MIN = 5;
 const unsigned int ADU_MAX = 256;
 
-unsigned short usRegInputStart = 0x0;
-signed short usRegInputBuf[4] = {0x0};
+unsigned short RegInputStart = 0x0;
+signed short RegInputBuf[4] = {0x0};
 
 unsigned short wreq_addr;
 unsigned short wreq_dt;
@@ -137,13 +137,12 @@ struct Adc adc_struct = {
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 signed char Check_Uart_inbuff(struct Uart *RxTx);
-void data_exchange(struct Uart *RxTx);
-void modbus_function(struct Uart *RxTx);
+void Data_Exchange(struct Uart *RxTx);
+void Modbus_Function(struct Uart *RxTx);
 unsigned char crc8(unsigned char *buff, unsigned int len);
-char crc16in(unsigned char size, unsigned char *inbuf);
-void crc16_out(unsigned char size, unsigned char *outbuf);
-int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs);
-void Get_Temp_Humidity_Value();
+char CRC_16_In(unsigned char size, unsigned char *inbuf);
+void CRC_16_Out(unsigned char size, unsigned char *outbuf);
+int Read_Input_Reg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs);
 float Get_Pressure_Value(struct Adc *adc_s);
 
 //float get_filtred_data(float *buff,int window);
@@ -193,8 +192,8 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
-  set_status_flag(PMNC_BIT_POS);
-  set_status_flag(THMNC_BIT_POS);
+  Set_Status_Flag(PMNC_BIT_POS);
+  Set_Status_Flag(THMNC_BIT_POS);
   HAL_Delay(2);
 
   TIM_GET_CLEAR_IT(&htim1,TIM_IT_UPDATE);
@@ -211,9 +210,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		sht3x_read_temperature_and_humidity(&hi2c1, &sht31, &unn, usRegInputBuf);
+		Read_Temperature_Humidity(&hi2c1, &sht31, &unn, RegInputBuf);
 		Get_Pressure_Value(&adc_struct);
-		data_exchange(&uart);
+		Data_Exchange(&uart);
 
 	}
 
@@ -266,7 +265,7 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void data_exchange(struct Uart *RxTx) {
+void Data_Exchange(struct Uart *RxTx) {
 
 	switch (RxTx->state) {
 
@@ -315,7 +314,7 @@ void data_exchange(struct Uart *RxTx) {
 		break;
 
 	case modbus_functions:
-		modbus_function(RxTx);
+		Modbus_Function(RxTx);
 		RxTx->state = start_uart_transmit_data;
 		break;
 
@@ -334,7 +333,7 @@ void data_exchange(struct Uart *RxTx) {
 
 }
 
-void modbus_function(struct Uart *RxTx) {
+void Modbus_Function(struct Uart *RxTx) {
 
 ////////////////READ_INPUT_REGISTERS//////////////////
 	if (RxTx->uart_inbuf[1] == FC_RD_INPUT_RG) {
@@ -345,7 +344,7 @@ void modbus_function(struct Uart *RxTx) {
 		unn.ch_val[1] = RxTx->uart_inbuf[4];
 		unn.ch_val[0] = RxTx->uart_inbuf[5];
 		wreq_dt = unn.w_val;
-		exception = ReadInputReg(RxTx, wreq_addr, wreq_dt);
+		exception = Read_Input_Reg(RxTx, wreq_addr, wreq_dt);
 
 	} else {
 
@@ -357,7 +356,7 @@ void modbus_function(struct Uart *RxTx) {
 		RxTx->uart_outbuf[0] = DEV_ADDR;
 		RxTx->uart_outbuf[1] = RxTx->uart_inbuf[1] | 0x80;
 		RxTx->uart_outbuf[2] = exception;
-		crc16_out(0x3, RxTx->uart_outbuf);
+		CRC_16_Out(0x3, RxTx->uart_outbuf);
 		RxTx->byte_to_send = 5;
 		exception = 0;
 
@@ -367,26 +366,26 @@ void modbus_function(struct Uart *RxTx) {
 		RxTx->uart_outbuf[1] = RxTx->uart_inbuf[1];
 		RxTx->uart_outbuf[2] = wreq_dt << 1;
 		RxTx->byte_to_send = (wreq_dt << 1) + FC_04_HLENGTH_WITH_CRC;
-		crc16_out((wreq_dt << 1) + FC_04_HLENGTH_WITHOUT_CRC,RxTx->uart_outbuf);
+		CRC_16_Out((wreq_dt << 1) + FC_04_HLENGTH_WITHOUT_CRC,RxTx->uart_outbuf);
 
 	}
 
 }
 
-int ReadInputReg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs) {
+int Read_Input_Reg(struct Uart *RxTx, unsigned short Address,signed short NRegs) {
 
 	int iRegIndex = 0x0;
 	int RegBufferIndex = 0x3;
 
-	if ((sNRegs >= 0x0001) && (sNRegs <= REG_INPUT_NREGS)) {
+	if ((NRegs >= 0x0001) && (NRegs <= REG_INPUT_NREGS)) {
 
-		if ((usAddress >= REG_INPUT_START) && (usAddress + sNRegs <= REG_INPUT_START + REG_INPUT_NREGS)) {
-			iRegIndex = (int) (usAddress - usRegInputStart);
-			while (sNRegs > 0) {
-				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] >> 8);
-				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (usRegInputBuf[iRegIndex] & 0xFF);
+		if ((Address >= REG_INPUT_START) && (Address + NRegs <= REG_INPUT_START + REG_INPUT_NREGS)) {
+			iRegIndex = (int) (Address - RegInputStart);
+			while (NRegs > 0) {
+				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (RegInputBuf[iRegIndex] >> 8);
+				RxTx->p_uart_outbuf[RegBufferIndex++] = (uint8_t) (RegInputBuf[iRegIndex] & 0xFF);
 				iRegIndex++;
-				sNRegs--;
+				NRegs--;
 			}
 
 		}
@@ -413,20 +412,20 @@ float Get_Pressure_Value(struct Adc *adc_s) {
 	if (adc_s->adc_data_ready) {
 		adc_s->adc_data_ready = false;
 
-		adc_s->adc_val = get_filtred_data(adc_s->adc, ADC_FILTR_WINDOW);
+		adc_s->adc_val = Get_Filtred_Data(adc_s->adc, ADC_FILTR_WINDOW);
 		adc_s->voltage = adc_s->adc_val * 3.3 / 4096;
 		adc_s->pressure = (adc_s->voltage / 3.3 + 0.00842) / 0.002421;
 
-		usRegInputBuf[1] = adc_s->pressure*10;
-		reset_status_flag(PMNC_BIT_POS);
+		RegInputBuf[1] = adc_s->pressure*10;
+		Reset_Status_Flag(PMNC_BIT_POS);
 
 		if (adc_s->pressure > MAX_PRESS || adc_s->pressure < MIN_PRESS){
 
-			set_status_flag(POL_BIT_POS);
+			Set_Status_Flag(POL_BIT_POS);
 		}
 		else
 		{
-			reset_status_flag(POL_BIT_POS);
+			Reset_Status_Flag(POL_BIT_POS);
 		}
 
 
@@ -438,7 +437,7 @@ float Get_Pressure_Value(struct Adc *adc_s) {
 
 
 
-float get_filtred_data(float *buff,int window) {
+float Get_Filtred_Data(float *buff,int window) {
 
 	float sum = 0;
 	for (int i = 0; i < window; i++) {
@@ -451,15 +450,15 @@ float get_filtred_data(float *buff,int window) {
 
 
 
-void set_status_flag(int flag_pos){
+void Set_Status_Flag(int flag_pos){
 
-	usRegInputBuf[0] |= 1<<flag_pos;
+	RegInputBuf[0] |= 1<<flag_pos;
 
 }
 
-void reset_status_flag(int flag_pos){
+void Reset_Status_Flag(int flag_pos){
 
-	usRegInputBuf[0] &= ~(1<<flag_pos);
+	RegInputBuf[0] &= ~(1<<flag_pos);
 
 }
 
@@ -482,7 +481,7 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 		return -2;
 	}
 
-	if (crc16in(RxTx->receive_byte, RxTx->uart_inbuf) != 0) {
+	if (CRC_16_In(RxTx->receive_byte, RxTx->uart_inbuf) != 0) {
 
 		return -1;
 	}
@@ -490,7 +489,7 @@ signed char Check_Uart_inbuff(struct Uart *RxTx) {
 	return 0;
 }
 
-char crc16in(unsigned char size, unsigned char *inbuf) {
+char CRC_16_In(unsigned char size, unsigned char *inbuf) {
 	unsigned short w = 0xffff, w1;
 	char shift_cnt, jj;
 	unsigned short ii1 = 0;
@@ -524,7 +523,7 @@ char crc16in(unsigned char size, unsigned char *inbuf) {
 }
 
 
-void crc16_out(unsigned char size, unsigned char *outbuf) {
+void CRC_16_Out(unsigned char size, unsigned char *outbuf) {
 	unsigned short w = 0xffff, w1;
 	char shift_cnt, jj;
 	unsigned short ii2 = 0;
@@ -566,6 +565,7 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
 
 
 HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
+
 	sht31.i2c_ecode = true;
 
 
