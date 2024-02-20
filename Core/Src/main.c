@@ -139,14 +139,10 @@ void SystemClock_Config(void);
 signed char Check_Uart_inbuff(struct Uart *RxTx);
 void Data_Exchange(struct Uart *RxTx);
 void Modbus_Function(struct Uart *RxTx);
-unsigned char crc8(unsigned char *buff, unsigned int len);
 char CRC_16_In(unsigned char size, unsigned char *inbuf);
 void CRC_16_Out(unsigned char size, unsigned char *outbuf);
 int Read_Input_Reg(struct Uart *RxTx, unsigned short usAddress,signed short sNRegs);
 float Get_Pressure_Value(struct Adc *adc_s);
-
-//float get_filtred_data(float *buff,int window);
-
 
 /* USER CODE END PFP */
 
@@ -564,7 +560,7 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
 
 
 
-HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c){
 
 	sht31.i2c_ecode = true;
 
@@ -636,7 +632,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 		if (uart.uart_ecode & UART_FLAG_ORE) {
 
 			OE_Error = true;
-			__HAL_UART_CLEAR_OREFLAG(&huart1);
 		}
 		if (uart.uart_ecode &  USART_SR_NE ){
 

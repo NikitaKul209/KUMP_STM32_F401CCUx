@@ -5,19 +5,8 @@
 
 const uint16_t I2C_DEV_ADDR = 0x44;
 const unsigned short START_SINGLE_SHOT_MODE = 0x2c06;
-const unsigned short MEASUREMENT_PERIODIC_COMMANDS = 0x2737;
-const unsigned short START_PERIODIC_READ_COMMANDS = 0xE000;
-const unsigned short I2C_STOP_PERIODIC_READ_COMMAND = 0x3093;
 const unsigned short I2C_RESET_COMMAND = 0x0006;
 
- void sht3x_send_command(unsigned short command, unsigned char dev_addr)
-{
-	uint8_t command_buffer[2] = {(command & 0xff00u) >> 8u, command & 0xffu};
-
-	 HAL_I2C_Master_Transmit_IT(&hi2c1, dev_addr<<1, command_buffer, sizeof(command_buffer));
-
-
-}
 
 void Read_Temperature_Humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht,union unn_t *unn, signed short *RegBuff )
  {
@@ -96,6 +85,7 @@ void Read_Temperature_Humidity(I2C_HandleTypeDef *hi2c, struct sht31_struct* sht
  	 	{
 
  	 		Set_Status_Flag(CRCE_BIT_POS);
+
  	 	}
 
 
